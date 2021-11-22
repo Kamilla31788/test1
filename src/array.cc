@@ -815,7 +815,7 @@ fail:
 // the only documentation for this is in the Python sourcecode
 const Py_hash_t HASH_IMAG = _PyHASH_IMAG;
 
-Py_hash_t hash(long x)
+Py_hash_t hash(void *inst, long x)
 {
     // For integers the hash is just the integer itself modulo _PyHASH_MODULUS
     // except for the singular case of -1.
@@ -834,24 +834,28 @@ typedef long Py_hash_t;
 typedef unsigned long Py_uhash_t;
 const Py_hash_t HASH_IMAG = 1000003L;
 
-Py_hash_t hash(long x)
+Py_hash_t hash(void *inst, long x)
 {
     return x != -1 ? x : -2;
 }
 
 #endif
 
-Py_hash_t hash(double x)
+Py_hash_t hash(void *inst, double x)
 {
     // We used to have our own implementation of this, but the extra function
     // call is quite negligible compared to the execution time of the function.
+#if PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION >= 10
+    return _Py_HashDouble((PyObject *)inst, x);
+#else
     return _Py_HashDouble(x);
+#endif
 }
 
-Py_hash_t hash(Complex x)
+Py_hash_t hash(void *inst, Complex x)
 {
     // x.imag == 0  =>  hash(x.imag) == 0  =>  hash(x) == hash(x.real)
-    return hash(x.real()) + HASH_IMAG * hash(x.imag());
+    return hash(inst, x.real()) + HASH_IMAG * hash(inst, x.imag());
 }
 
 // The following routine calculates the hash of a multi-dimensional array.  The
@@ -875,7 +879,7 @@ Py_hash_t hash(PyObject *obj)
     Array<T> *self = reinterpret_cast<Array<T> *>(obj);
     self->ndim_shape(&ndim, &shape);
     T *p = self->data();
-    if (ndim == 0) return hash(*p);
+    if (ndim == 0) return hash(p, *p);
 
     const Py_uhash_t mult_init = 1000003, r_init = 0x345678;
     const Py_uhash_t mul_addend = 82520, r_addend = 97531;
@@ -891,7 +895,8 @@ Py_hash_t hash(PyObject *obj)
             --i[d];
             if (d == ndim) {
                 // Innermost loop body.
-                r[d] = (r[d] ^ hash(*p++)) * mult[d];
+                r[d] = (r[d] ^ hash(p, *p)) * mult[d];
+                p++;
                 mult[d] += mul_addend + 2 * i[d];
             } else {
                 // Entering a loop.
@@ -958,7 +963,7 @@ Py_hash_t hash(PyObject *obj)
     Array<T> *self = reinterpret_cast<Array<T> *>(obj);
     self->ndim_shape(&ndim, &shape);
     T *p = self->data();
-    if (ndim == 0) return hash(*p);
+    if (ndim == 0) return hash(p, *p);
 
     Py_ssize_t i[max_ndim];
     Py_uhash_t acc[max_ndim];
@@ -971,7 +976,8 @@ Py_hash_t hash(PyObject *obj)
         if (i[d]) {
             --i[d];
             if (d == ndim) {
-                _hash_inner_loop(acc[d], hash(*p++));
+                _hash_inner_loop(acc[d], hash(p, *p));
+                p++;
             } else {
                 ++d;
                 i[d] = shape[d];
