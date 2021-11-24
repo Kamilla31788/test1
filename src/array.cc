@@ -841,13 +841,15 @@ Py_hash_t hash(void *inst, long x)
 
 #endif
 
+// We used to have our own implementation of this, but the extra function
+// call is quite negligible compared to the execution time of the function.
+#if PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION >= 10
 Py_hash_t hash(void *inst, double x)
 {
-    // We used to have our own implementation of this, but the extra function
-    // call is quite negligible compared to the execution time of the function.
-#if PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION >= 10
     return _Py_HashDouble((PyObject *)inst, x);
 #else
+Py_hash_t hash(void *, double x)
+{
     return _Py_HashDouble(x);
 #endif
 }
