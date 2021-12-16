@@ -323,7 +323,7 @@ def test_hash_equality():
     int_bits = (8 * ta.dtype_size[int]) - 1  # 8 bits per byte, minus 1 sign bit
     maxint = 2**(int_bits)
 
-    special = [float('nan'), float('inf'), float('-inf'),
+    special = [float('inf'), float('-inf'),
                0, -1, -1.0, -1 + 0j,
                303, -312424, -0.3, 1.7, 0.4j, -12.3j, 1 - 12.3j, 1.3 - 12.3j,
                (), (-1,), (2,),
