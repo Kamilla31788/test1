@@ -105,7 +105,7 @@ public:
         }
     }
 
-    ssize_t object_size() const;
+    Py_ssize_t object_size() const;
 
     static bool check_exact(PyObject *candidate) {
         return (Py_TYPE(candidate) == &pytype);
@@ -160,7 +160,7 @@ int coerce_to_arrays(PyObject **a, PyObject **b, Dtype *coerced_dtype);
 template <typename T> PyObject *transpose(PyObject *in, PyObject *dummy);
 
 template <typename T>
-ssize_t Array<T>::object_size() const
+Py_ssize_t Array<T>::object_size() const
 {
     int ndim;
     size_t *shape;

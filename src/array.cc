@@ -459,7 +459,7 @@ T (*get_buffer_converter(Py_buffer *view))(const void *)
     case 'Q':
         return number_from_ptr<T, unsigned long long>;
     case 'n':
-        return number_from_ptr<T, ssize_t>;
+        return number_from_ptr<T, Py_ssize_t>;
     case 'N':
         return number_from_ptr<T, size_t>;
     case 'f':
