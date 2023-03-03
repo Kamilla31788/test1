@@ -296,7 +296,7 @@ def test_dot():
             raises(ValueError, ta.dot, ta.array(a), ta.array(b))
 
 def test_mutable():
-    arr = make((17,17), dtypes[0])
+    arr = ta.array(make((17,17), dtypes[0]), dtypes[0])
     orig_value = arr[0, 0]
     arr[0, 0] = -7
     assert arr[0, 0] != orig_value

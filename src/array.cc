@@ -1722,7 +1722,7 @@ PyTypeObject Array<T>::pytype = {
     0,                              // tp_call
     str<T>,                         // tp_str
     PyObject_GenericGetAttr,        // tp_getattro
-    PyObject_GenericSetAttr,        // tp_setattro
+    0,        // tp_setattro
     &as_buffer,                     // tp_as_buffer
     _tp_flags,                      // tp_flags
     0,                              // tp_doc
