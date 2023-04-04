@@ -248,12 +248,13 @@ PyObject *freeze(PyObject *, PyObject *args)
     PyObject *a;
     if (!PyArg_ParseTuple(args, "O", &a)) return 0;
     Dtype dtype = get_dtype(a);
-    return array_from_arraylike(a, &dtype, Dtype(0), false, false); // SEAN: TODO: Add flag for mutability: 0 = immutable, 1 = mutable
+    return array_from_arraylike(a, &dtype, Dtype(0), false, false);
 }
 
 PyDoc_STRVAR(freeze_doc,
-"freeze(mutarray) -> array\n\n\
-Given a mutable array mutarray, freeze will return the immutable version of it.");
+"freeze(mutarray) --> array\n\n\
+Given a mutable array mutarray, freeze will return an immutable version of it.\n\n\
+NOTE: calling hash on a mutable array will implicitly freeze the array.");
 
 template <template <typename> class Op>
 PyObject *binary_ufunc(PyObject *, PyObject *args)

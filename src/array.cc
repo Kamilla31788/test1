@@ -749,10 +749,10 @@ PyObject *seq_getitem(PyObject *obj, Py_ssize_t index)
 }
 
 template <typename T>
-PyObject *seq_setitem(PyObject *obj, Py_ssize_t index, PyObject *value)
+int seq_setitem(PyObject *obj, Py_ssize_t index, PyObject *value)
 {
     //SEAN: TODO: IMPLEMENT!
-    return (PyObject*) NULL;
+    return 0;
 }
 
 template <typename T>
@@ -1310,7 +1310,7 @@ PyTypeObject Array_iter<T>::pytype = {
     pyname,                             // tp_name
     sizeof(Array_iter<T>),              // tp_basicsize
     0,                                  // tp_itemsize
-    // methods
+    // methods / slots
     (destructor)Array_iter<T>::dealloc, // tp_dealloc
     0,                                  // tp_print
     0,                                  // tp_getattr
@@ -1778,7 +1778,14 @@ PyObject *size_of(PyObject *in_, PyObject *)
 }
 
 template <typename T>
-Array<T> *Array<T>::make(int ndim, size_t size)
+PyObject *freeze(PyObject *in_, PyObject *)
+{
+    //SEAN: TODO: Set the object to immutable
+    return Py_None;
+}
+
+template <typename T>
+Array<T> *Array<T>::make(int ndim, size_t size, bool mutable = true)
 {
     Py_ssize_t ob_size = size;
     assert(ndim != 0 || size == 1);
@@ -1794,7 +1801,7 @@ Array<T> *Array<T>::make(int ndim, size_t size)
 }
 
 template <typename T>
-Array<T> *Array<T>::make(int ndim, const size_t *shape, size_t *sizep)
+Array<T> *Array<T>::make(int ndim, const size_t *shape, size_t *sizep, bool mutable = true)
 {
     // Check shape and calculate size, the total number of elements.
     size_t size = 1;
@@ -1897,10 +1904,11 @@ PyBufferProcs Array<T>::as_buffer = {
 
 template <typename T>
 PyMethodDef Array<T>::methods[] = {
-    {"transpose", (PyCFunction)transpose<T>, METH_NOARGS},
-    {"conjugate", (PyCFunction)conjugate<T>, METH_NOARGS},
-    {"__sizeof__", (PyCFunction)size_of<T>, METH_NOARGS},
-    {"__reduce__", (PyCFunction)reduce<T>, METH_NOARGS},
+    {"transpose",  (PyCFunction)transpose<T>, METH_NOARGS},
+    {"conjugate",  (PyCFunction)conjugate<T>, METH_NOARGS},
+    {"__sizeof__", (PyCFunction)size_of<T>,   METH_NOARGS},
+    {"__reduce__", (PyCFunction)reduce<T>,    METH_NOARGS},
+    {"freeze",     (PyCFunction)freeze<T>,    METH_NOARGS},
     {0, 0}                      // Sentinel
 };
 
@@ -1959,6 +1967,10 @@ PyTypeObject Array<T>::pytype = {
 template class Array<long>;
 template class Array<double>;
 template class Array<Complex>;
+
+template PyObject *freeze<long>(PyObject*, PyObject*);
+template PyObject *freeze<double>(PyObject*, PyObject*);
+template PyObject *freeze<Complex>(PyObject*, PyObject*);
 
 template PyObject *transpose<long>(PyObject*, PyObject*);
 template PyObject *transpose<double>(PyObject*, PyObject*);

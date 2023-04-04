@@ -268,6 +268,9 @@ class test(test_orig):
             print('The Python package "pytest" is required to run tests.',
                   file=sys.stderr)
             sys.exit(1)
+        print ("if pytest is taking a long time, ensure the `PYTHONDONTWRITEBYTECODE` environment variable is set to 1"
+               "WINDOWS: set PYTHONDONTWRITEBYTECODE=1"
+               "UNIX: export PYTHONDONTWRITEBYTECODE=1")
         errno = pytest.main(shlex.split(self.pytest_args))
         sys.exit(errno)
 

@@ -302,6 +302,12 @@ def test_mutable():
     assert arr[0, 0] != orig_value
     assert arr[0, 0] == -7
 
+def test_freeze_mutable():
+    arr = ta.array(make((17,17), dtypes[0]), dtypes[0])
+    orig_value = arr[0, 0]
+
+
+
 def test_iteration():
     for dtype in dtypes:
         raises(TypeError, tuple, ta.array(1, dtype))

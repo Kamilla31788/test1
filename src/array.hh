@@ -111,12 +111,13 @@ public:
         return (Py_TYPE(candidate) == &pytype);
     }
 
-    static Array<T> *make(int ndim, size_t size);
-    static Array<T> *make(int ndim, const size_t *shape, size_t *size = 0);
+    static Array<T> *make(int ndim, size_t size, bool mutable = true);
+    static Array<T> *make(int ndim, const size_t *shape, size_t *size = 0, bool mutable = true);
 
     static const char *pyname, *pyformat;
 private:
     T ob_item[1];
+    unsigned long long flags; // using 8 bytes for alignment purposes
 
     static PyMethodDef methods[];
     static PySequenceMethods as_sequence;
