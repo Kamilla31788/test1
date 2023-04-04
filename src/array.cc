@@ -710,6 +710,13 @@ PyObject *getitem(PyObject *obj, PyObject *key)
 }
 
 template <typename T>
+int setitem(PyObject *obj, PyObject *key, PyObject *value)
+{
+    //SEAN: TODO: Implement this
+    return 0;
+}
+
+template <typename T>
 PyObject *seq_getitem(PyObject *obj, Py_ssize_t index)
 {
     int ndim;
@@ -739,6 +746,13 @@ PyObject *seq_getitem(PyObject *obj, Py_ssize_t index)
     T *dest = result->data();
     for (size_t i = 0; i < item_size; ++i) dest[i] = src[i];
     return (PyObject*)result;
+}
+
+template <typename T>
+PyObject *seq_setitem(PyObject *obj, Py_ssize_t index, PyObject *value)
+{
+    //SEAN: TODO: IMPLEMENT!
+    return (PyObject*) NULL;
 }
 
 template <typename T>
@@ -805,6 +819,195 @@ fail:
     view->obj = 0;
     return -1;
 }
+
+// Given the same input, these hash functions return the same result as those
+// in Python.  As tinyarrays compare equal to equivalent tuples it is important
+// for the hashes to agree.  If not, there will be problems with dictionaries.
+
+#if PY_MAJOR_VERSION >= 3
+
+// the only documentation for this is in the Python sourcecode
+const Py_hash_t HASH_IMAG = _PyHASH_IMAG;
+
+Py_hash_t hash(void *inst, long x)
+{
+    // For integers the hash is just the integer itself modulo _PyHASH_MODULUS
+    // except for the singular case of -1.
+    // define 'sign' of the correct width to avoid overflow
+    Py_hash_t sign = x < 0 ? -1 : 1;
+    Py_hash_t result = sign * ((sign * x) % _PyHASH_MODULUS);
+    return result == -1 ? -2 : result;
+}
+
+#else
+
+/* In Python 2 hashes were long integers, as indicated by
+   https://github.com/python/cpython/blob/2.7/Include/object.h#L314
+*/
+typedef long Py_hash_t;
+typedef unsigned long Py_uhash_t;
+const Py_hash_t HASH_IMAG = 1000003L;
+
+Py_hash_t hash(void *inst, long x)
+{
+    return x != -1 ? x : -2;
+}
+
+#endif
+
+// We used to have our own implementation of this, but the extra function
+// call is quite negligible compared to the execution time of the function.
+#if PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION >= 10
+Py_hash_t hash(void *inst, double x)
+{
+    return _Py_HashDouble((PyObject *)inst, x);
+#else
+Py_hash_t hash(void *, double x)
+{
+    return _Py_HashDouble(x);
+#endif
+}
+
+Py_hash_t hash(void *inst, Complex x)
+{
+    // x.imag == 0  =>  hash(x.imag) == 0  =>  hash(x) == hash(x.real)
+    return hash(inst, x.real()) + HASH_IMAG * hash(inst, x.imag());
+}
+
+// The following routine calculates the hash of a multi-dimensional array.  The
+// hash is equal to that of an arrangement of nested tuples equivalent to the
+// array.
+//
+// It exists in two versions because Python's tuplehash has changed in Python
+// 3.8 with the following motivation: "The hash function for tuples is now
+// based on xxHash which gives better collision results on (formerly)
+// pathological cases. Additionally, on 64-bit systems it improves tuple hashes
+// in general."
+
+#if (PY_MAJOR_VERSION < 3 || PY_MINOR_VERSION < 8) && PY_MAJOR_VERSION < 4
+
+// Version for Python < 3.8
+template <typename T>
+Py_hash_t hash(PyObject *obj)
+{
+    int ndim;
+    size_t *shape;
+    Array<T> *self = reinterpret_cast<Array<T> *>(obj);
+    self->ndim_shape(&ndim, &shape);
+    T *p = self->data();
+    if (ndim == 0) return hash(p, *p);
+
+    const Py_uhash_t mult_init = 1000003, r_init = 0x345678;
+    const Py_uhash_t mul_addend = 82520, r_addend = 97531;
+    Py_ssize_t i[max_ndim];
+    Py_uhash_t mult[max_ndim], r[max_ndim];
+    --ndim;                     // For convenience.
+    int d = 0;
+    i[0] = shape[0];
+    mult[0] = mult_init;
+    r[0] = r_init;
+    while (true) {
+        if (i[d]) {
+            --i[d];
+            if (d == ndim) {
+                // Innermost loop body.
+                r[d] = (r[d] ^ hash(p, *p)) * mult[d];
+                p++;
+                mult[d] += mul_addend + 2 * i[d];
+            } else {
+                // Entering a loop.
+                ++d;
+                i[d] = shape[d];
+                mult[d] = mult_init;
+                r[d] = r_init;
+            }
+        } else {
+            // Exiting a loop.
+            if (d == 0) {
+                // Exiting the outermost loop.
+                Py_uhash_t r_next = r[0] + r_addend;
+                return r_next == Py_uhash_t(-1) ? -2 : r_next;
+            }
+            --d;
+            Py_uhash_t r_next = r[d+1] + r_addend;
+            r_next = r_next == Py_uhash_t(-1) ? -2 : r_next;
+            r[d] = (r[d] ^ r_next) * mult[d];
+            mult[d] += mul_addend + 2 * i[d];
+        }
+    }
+}
+
+#else
+
+#if SIZEOF_PY_UHASH_T > 4
+
+const Py_uhash_t _hash_init = 2870177450012600261U;
+
+inline void _hash_inner_loop(Py_uhash_t &acc, Py_uhash_t lane)
+{
+    acc += lane * 14029467366897019727U;
+    acc = ((acc << 31) | (acc >> 33)); // Rotate left 31 bits.
+    acc *= 11400714785074694791U;
+}
+
+#else
+
+const Py_uhash_t _hash_init = 374761393U;
+
+inline void _hash_inner_loop(Py_uhash_t &acc, Py_uhash_t lane)
+{
+    acc += lane * 2246822519U;
+    acc = ((acc << 13) | (acc >> 19)); // Rotate left 13 bits.
+    acc *= 2654435761U;
+}
+
+#endif
+
+inline Py_uhash_t _hash_loop_end(Py_uhash_t acc, Py_uhash_t len)
+{
+    acc += len ^ (_hash_init ^ 3527539UL);
+    if (acc == Py_uhash_t(-1)) return 1546275796;
+    return acc;
+}
+
+// Version for Python >= 3.8
+template <typename T>
+Py_hash_t hash(PyObject *obj)
+{
+    int ndim;
+    size_t *shape;
+    Array<T> *self = reinterpret_cast<Array<T> *>(obj);
+    self->ndim_shape(&ndim, &shape);
+    T *p = self->data();
+    if (ndim == 0) return hash(p, *p);
+
+    Py_ssize_t i[max_ndim];
+    Py_uhash_t acc[max_ndim];
+    --ndim;                     // For convenience.
+    int d = 0;
+    i[0] = shape[0];
+    acc[0] = _hash_init;
+    // The following is equivalent to 'ndim' (the original value) nested loops.
+    while (true) {
+        if (i[d]) {
+            --i[d];
+            if (d == ndim) {
+                _hash_inner_loop(acc[d], hash(p, *p));
+                p++;
+            } else {
+                ++d;
+                i[d] = shape[d];
+                acc[d] = _hash_init;
+            }
+        } else {
+            if (d == 0) return _hash_loop_end(acc[0], shape[0]);
+            --d;
+            _hash_inner_loop(acc[d], _hash_loop_end(acc[d+1], shape[d+1]));
+        }
+    }
+}
+
+#endif
 
 
 template <typename T>
@@ -1145,6 +1348,10 @@ template PyObject *str<long>(PyObject*);
 template PyObject *str<double>(PyObject*);
 template PyObject *str<Complex>(PyObject*);
 
+template Py_hash_t hash<long>(PyObject*);
+template Py_hash_t hash<double>(PyObject*);
+template Py_hash_t hash<Complex>(PyObject*);
+
 template int getbuffer<long>(PyObject*, Py_buffer*, int);
 template int getbuffer<double>(PyObject*, Py_buffer*, int);
 template int getbuffer<Complex>(PyObject*, Py_buffer*, int);
@@ -1337,7 +1544,7 @@ int load_index_seq_as_ulong(PyObject *obj, unsigned long *uout,
 // will be used and written back to *dtype.  Any other value of *dtype requests
 // an array of the given dtype.
 PyObject *array_from_arraylike(PyObject *in, Dtype *dtype, Dtype dtype_min,
-                               bool as_matrix)
+                               bool as_matrix, bool mutable)
 {
     Dtype dtype_in = get_dtype(in), dt = *dtype;
     int ndim;
@@ -1659,13 +1866,15 @@ PySequenceMethods Array<T>::as_sequence = {
     (lenfunc)len,                // sq_length
     0,                           // sq_concat
     0,                           // sq_repeat
-    seq_getitem<T> // sq_item
+    seq_getitem<T>,              // sq_item
+    seq_setitem<T>               // sq_ass_item
 };
 
 template <typename T>
 PyMappingMethods Array<T>::as_mapping = {
     (lenfunc)len,               // mp_length
-    getitem<T>      // mp_subscript
+    getitem<T>,                 // mp_subscript
+    setitem<T>                  // mp_ass_subscript
 };
 
 #if PY_MAJOR_VERSION >= 3
@@ -1718,7 +1927,7 @@ PyTypeObject Array<T>::pytype = {
     &as_number,                     // tp_as_number
     &as_sequence,                   // tp_as_sequence
     &as_mapping,                    // tp_as_mapping
-    0,                              // tp_hash
+    hash<T>,                        // tp_hash
     0,                              // tp_call
     str<T>,                         // tp_str
     PyObject_GenericGetAttr,        // tp_getattro

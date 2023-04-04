@@ -243,6 +243,18 @@ arrays, to a scalar product of vectors.  In the general case, it is equivalent\n
 to a sum over the last axis of a and the second-to-last of b, e.g.::\n\n\
     dot(a, b)[i,j,k,m] = sum(a[i,j,:] * b[k,:,m])");
 
+PyObject *freeze(PyObject *, PyObject *args)
+{
+    PyObject *a;
+    if (!PyArg_ParseTuple(args, "O", &a)) return 0;
+    Dtype dtype = get_dtype(a);
+    return array_from_arraylike(a, &dtype, Dtype(0), false, false); // SEAN: TODO: Add flag for mutability: 0 = immutable, 1 = mutable
+}
+
+PyDoc_STRVAR(freeze_doc,
+"freeze(mutarray) -> array\n\n\
+Given a mutable array mutarray, freeze will return the immutable version of it.");
+
 template <template <typename> class Op>
 PyObject *binary_ufunc(PyObject *, PyObject *args)
 {
@@ -250,6 +262,7 @@ PyObject *binary_ufunc(PyObject *, PyObject *args)
     if (!PyArg_ParseTuple(args, "OO", &a, &b)) return 0;
     return Binary_op<Op>::apply(a, b);
 }
+
 
 template <template <typename> class Op>
 PyObject *unary_ufunc(PyObject *, PyObject *args)
@@ -326,6 +339,6 @@ PyMethodDef functions[] = {
     {"round", unary_ufunc_round<Nearest>, METH_VARARGS, unary_ufunc_doc},
     {"floor", unary_ufunc_round<Floor>, METH_VARARGS, unary_ufunc_doc},
     {"ceil", unary_ufunc_round<Ceil>, METH_VARARGS, unary_ufunc_doc},
-
+    {"freeze", freeze, METH_VARARGS, freeze_doc},
     {0, 0, 0, 0}                // Sentinel
 };

@@ -152,7 +152,8 @@ inline Dtype get_dtype(PyObject *obj)
 
 PyObject *array_from_arraylike(PyObject *in, Dtype *dtype,
                                Dtype dtype_min = Dtype(0),
-                               bool as_matrix = false);
+                               bool as_matrix = false,
+                               bool mutable = false);
 
 // Coerced_dtype will contain the common dtype of the coerced arrays.
 int coerce_to_arrays(PyObject **a, PyObject **b, Dtype *coerced_dtype);
