@@ -1364,6 +1364,15 @@ template PyObject *seq_getitem<long>(PyObject*, Py_ssize_t);
 template PyObject *seq_getitem<double>(PyObject*, Py_ssize_t);
 template PyObject *seq_getitem<Complex>(PyObject*, Py_ssize_t);
 
+template int setitem<long>(PyObject*, Py_ssize_t, PyObject*);
+template int setitem<double>(PyObject*, Py_ssize_t, PyObject*);
+template int setitem<Complex>(PyObject*, Py_ssize_t, PyObject*);
+
+template int seq_setitem<long>(PyObject*, Py_ssize_t, PyObject*);
+template int seq_setitem<double>(PyObject*, Py_ssize_t, PyObject*);
+template int seq_setitem<Complex>(PyObject*, Py_ssize_t, PyObject*);
+
+
 } // Anonymous namespace
 
 // **************** Public interface ****************
