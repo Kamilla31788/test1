@@ -111,8 +111,8 @@ public:
         return (Py_TYPE(candidate) == &pytype);
     }
 
-    static Array<T> *make(int ndim, size_t size, bool mutable = true);
-    static Array<T> *make(int ndim, const size_t *shape, size_t *size = 0, bool mutable = true);
+    static Array<T> *make(int ndim, size_t size, bool is_mutable = true);
+    static Array<T> *make(int ndim, const size_t *shape, size_t *size = 0, bool is_mutable = true);
 
     static const char *pyname, *pyformat;
 private:

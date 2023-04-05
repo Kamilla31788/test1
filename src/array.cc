@@ -1785,7 +1785,7 @@ PyObject *freeze(PyObject *in_, PyObject *)
 }
 
 template <typename T>
-Array<T> *Array<T>::make(int ndim, size_t size, bool mutable = true)
+Array<T> *Array<T>::make(int ndim, size_t size, bool is_mutable = true)
 {
     Py_ssize_t ob_size = size;
     assert(ndim != 0 || size == 1);
@@ -1801,7 +1801,7 @@ Array<T> *Array<T>::make(int ndim, size_t size, bool mutable = true)
 }
 
 template <typename T>
-Array<T> *Array<T>::make(int ndim, const size_t *shape, size_t *sizep, bool mutable = true)
+Array<T> *Array<T>::make(int ndim, const size_t *shape, size_t *sizep, bool is_mutable = true)
 {
     // Check shape and calculate size, the total number of elements.
     size_t size = 1;
