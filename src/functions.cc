@@ -248,7 +248,7 @@ PyObject *freeze(PyObject *, PyObject *args)
     PyObject *a;
     if (!PyArg_ParseTuple(args, "O", &a)) return 0;
     Dtype dtype = get_dtype(a);
-    return array_from_arraylike(a, &dtype, Dtype(0), false, false);
+    return array_from_arraylike(a, &dtype, Dtype(0), false, false); //SEAN TODO: Instead of making new object copy, just tweak internal flags
 }
 
 PyDoc_STRVAR(freeze_doc,

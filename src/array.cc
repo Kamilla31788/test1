@@ -12,6 +12,7 @@
 #include <sstream>
 #include <limits>
 #include <algorithm>
+#include <tuple>
 #include "array.hh"
 #include "arithmetic.hh"
 #include "functions.hh"
@@ -690,29 +691,45 @@ out_of_range:
 }
 
 template <typename T>
-PyObject *getitem(PyObject *obj, PyObject *key)
+inline std::tuple<T*, Py_ssize_t>  prepareitem(PyObject *obj, PyObject *key)
 {
     Array<T> *self = reinterpret_cast<Array<T> *>(obj);
 
     if (PySlice_Check(key)) {
         PyErr_SetString(PyExc_NotImplementedError,
                         "Slices are not implemented.");
-        return 0;
-    } else {
-        int ndim;
-        size_t *shape;
-        self->ndim_shape(&ndim, &shape);
-        T *data = self->data();
-        Py_ssize_t index = index_from_key(ndim, shape, key);
-        if (index == -1) return 0;
-        return pyobject_from_number(data[index]);
+        return std::make_tuple((T*)NULL, NULL);
     }
+    int ndim;
+    size_t *shape;
+    self->ndim_shape(&ndim, &shape);
+    T *data = self->data();
+    Py_ssize_t index = index_from_key(ndim, shape, key);
+    if (index ==-1) return std::make_tuple((T*)NULL, NULL);
+
+    return std::make_tuple(data, index);
+}
+
+template <typename T>
+PyObject *getitem(PyObject *obj, PyObject *key)
+{
+    T* data;
+    Py_ssize_t index;
+    std::tie(data, index) = prepareitem<T>(obj, key);
+    if (data == NULL) return 0;
+
+    return pyobject_from_number(data[index]);
 }
 
 template <typename T>
 int setitem(PyObject *obj, PyObject *key, PyObject *value)
 {
-    //SEAN: TODO: Implement this
+    T* data;
+    Py_ssize_t index;
+    std::tie(data, index) = prepareitem<T>(obj, key);
+    if (data == NULL) return 0;
+
+    data[index] = number_from_pyobject<T>(value);
     return 0;
 }
 
@@ -1351,6 +1368,10 @@ template PyObject *str<Complex>(PyObject*);
 template Py_hash_t hash<long>(PyObject*);
 template Py_hash_t hash<double>(PyObject*);
 template Py_hash_t hash<Complex>(PyObject*);
+
+template std::tuple<long *, Py_ssize_t> prepareitem<long>(PyObject*, PyObject*);
+template std::tuple<double *, Py_ssize_t> prepareitem<double>(PyObject*, PyObject*);
+template std::tuple<Complex *, Py_ssize_t> prepareitem<Complex>(PyObject*, PyObject*);
 
 template int getbuffer<long>(PyObject*, Py_buffer*, int);
 template int getbuffer<double>(PyObject*, Py_buffer*, int);
