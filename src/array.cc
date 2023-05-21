@@ -768,7 +768,44 @@ PyObject *seq_getitem(PyObject *obj, Py_ssize_t index)
 template <typename T>
 int seq_setitem(PyObject *obj, Py_ssize_t index, PyObject *value)
 {
-    //SEAN: TODO: IMPLEMENT!
+    //SEAN : TODO
+    int ndim;
+    size_t *shape;
+    Array<T> *self = reinterpret_cast<Array<T> *>(obj);
+    self->ndim_shape(&ndim, &shape);
+    assert(ndim != 0);
+
+    if (index < 0) index += shape[0];
+    if (size_t(index) >= shape[0]) {
+        PyErr_SetString(PyExc_IndexError, "Invalid index.");
+        return 0;
+    }
+
+    T *target = self->data();
+    if (ndim == 1) {
+        assert(index >= 0);
+        assert(size_t(index) < shape[0]);
+        target[index] = number_from_pyobject<T>(value);
+    }
+
+    assert(ndim > 1);
+    Dtype dtype_a = NONE;
+    PyObject *value_obj = array_from_arraylike(value, &dtype_a);
+    if (!value_obj)
+    {
+        PyErr_SetString(PyExc_TypeError, "Did not get arraylike value.");
+        return 0;
+    }
+
+    int value_ndim;
+    size_t *value_shape;
+
+    Array<T> *value_array = reinterpret_cast<Array<T> *>(value_obj);
+    value_array->ndim_shape(&value_ndim, &value_shape);
+    size_t item_size = calc_size(value_ndim, value_shape);
+    target += index * item_size;
+    T *src = value_array->data();
+    for (size_t i = 0; i < item_size; ++i) target[i] = src[i];
     return 0;
 }
 
@@ -1829,6 +1866,8 @@ Array<T> *Array<T>::make(int ndim, size_t size, bool is_mutable = true)
         result->ob_base.ob_size = -1;
     return result;
 }
+
+
 
 template <typename T>
 Array<T> *Array<T>::make(int ndim, const size_t *shape, size_t *sizep, bool is_mutable = true)
